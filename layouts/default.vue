@@ -1,7 +1,7 @@
 <template>
   <div>
     <!-- Navbar for large screens-->
-    <b-navbar id="navbar_large" toggleable="xl" type="dark" class="ourBack d-none d-xl-flex pl-1" fixed="top">
+    <b-navbar id="navbar_large" type="dark" class="ourBack pl-1" fixed="top">
       <div class="d-flex justify-content-around">
         <h1 class="text-white">
           Don't Make A Word!

@@ -1,5 +1,5 @@
 <template>
-  <div class="text-center" @keydown.enter.exact.prevent="maybePlay">
+  <div class="text-center">
     <h3>Add letters at the start or end.</h3>
     <h3>Must be part of a word.</h3>
     <h3>Not a whole word.</h3>
@@ -7,12 +7,14 @@
     <div class="justify-content-around d-flex">
       <b-input
         ref="input"
-        :value="letters"
+        :key="bump"
+        v-model="inputletters"
         size="lg"
         class="letters"
         autocomplete="off"
-        :readonly="over"
-        @keydown.prevent="check"
+        :disabled="over"
+        @keydown.prevent="move"
+        @textInput="check"
       />
     </div>
     <div v-if="over" class="mt-2">
@@ -23,13 +25,13 @@
         <b>{{ letters }}</b> is not part of a word.  Lose {{ letters.length }} points.
       </div>
       <div v-if="couldhave" class="text-success">
-        From {{ last }} could have reached <b>{{ couldhave }}</b>
+        From '{{ last }}' could have reached <b>{{ couldhave }}</b> (maybe - there's a bug here)
       </div>
-      <div v-else class="text-error">
+      <div v-else-if="wholeWord" class="text-danger">
         You got the best word!
       </div>
       <b-btn variant="success" class="mt-3 mb-4" @click="play">
-        Play Again
+        Play Again ({{ playIn }})
       </b-btn>
     </div>
     <h3 v-if="total">
@@ -66,10 +68,13 @@ export default {
       total: 0,
       possible: 0,
       letters: null,
+      inputletters: null,
       partOfWord: true,
       wholeWord: false,
       last: null,
-      couldhave: null
+      couldhave: null,
+      playIn: null,
+      bump: 0
     }
   },
 
@@ -78,64 +83,117 @@ export default {
   },
 
   methods: {
-    async check(e) {
+    move(e) {
       const el = this.$refs.input.$el
       const pos = el.selectionStart
-      this.last = this.letters
 
-      if (e.key === 'Home' || e.key === 'ArrowLeft') {
-        // Go to start
+      if (e.keyCode === 36 || e.keyCode === 37) {
+        // Home or left - go to start
         el.selectionStart = 0
         el.selectionEnd = 0
-      } else if (e.key === 'End' || e.key === 'ArrowRight') {
+      } else if (e.keyCode === 35 || e.keyCode === 39) {
+        // End or right - go to end
         el.selectionStart = this.letters.length
         el.selectionEnd = this.letters.length
       } else if (
-        e.key.length === 1 &&
-        (pos === this.letters.length || pos === 0)
+        (pos === this.letters.length || pos === 0) &&
+        ((e.keyCode > 64 && e.keyCode < 91) ||
+          (e.keyCode > 96 && e.keyCode < 123))
       ) {
-        console.log('Start or end')
-        // Start or end of word
+        // This only works on desktop because on mobile keypress events aren't usable.
+        // updated.
+        //
+        // Alphabetic at start or end
         if (pos === 0) {
-          // Add to start
-          this.letters = e.key + this.letters
-          setTimeout(() => {
-            el.selectionStart = 0
-            el.selectionEnd = 0
-          }, 200)
+          this.addToStart(el, e.key)
         } else {
-          // Add to end
-          this.letters += e.key
-          setTimeout(() => {
-            el.selectionStart = this.letters.length
-            el.selectionEnd = this.letters.length
-          }, 200)
+          this.addToEnd(el, e.key)
         }
+      }
+    },
 
-        this.partOfWord = await this.$store.dispatch('dictionary/partOfWord', {
-          letters: this.letters
-        })
+    check(e) {
+      // On mobile keypress etc aren't usable, so we use textInput to get the key.
+      const el = this.$refs.input.$el
+      const pos = el.selectionStart
+      const key = e.data
+      const keyCode = key.charCodeAt(0)
 
-        this.wholeWord = await this.$store.dispatch('dictionary/wholeWord', {
-          letters: this.letters
-        })
+      console.log('Key', key, keyCode, pos, this.letters, el.value, e)
 
-        if (this.wholeWord) {
-          this.total += this.letters.length
-          this.roundover()
-        } else if (!this.partOfWord) {
-          this.total -= this.letters.length
-          this.roundover()
-        } else {
-          this.round = this.letters.length
-        }
-      } else {
-        // Can't do stuff in the middle
-        e.preventDefault()
-        e.stopPropagation()
+      if (pos === 0) {
+        this.addToStart(el, key)
+      } else if (pos === this.letters.length) {
+        this.addToEnd(el, key)
       }
 
+      e.preventDefault()
+      e.stopPropagation()
+      e.stopImmediatePropagation()
+
       return false
+    },
+
+    addToStart(el, key) {
+      // Add to start
+      console.log('Add to start', key)
+      this.last = this.letters
+      this.letters = key + this.letters
+      this.inputletters = this.letters.toUpperCase()
+      setTimeout(() => {
+        el.selectionStart = 0
+        el.selectionEnd = 0
+      }, 200)
+
+      this.checkOver()
+    },
+
+    addToEnd(el, key) {
+      // Add to end
+      console.log('Add to end', key)
+      this.last = this.letters
+      this.letters += key
+      this.inputletters = this.letters.toUpperCase()
+      setTimeout(() => {
+        el.selectionStart = this.letters.length
+        el.selectionEnd = this.letters.length
+      }, 200)
+
+      this.checkOver()
+    },
+
+    async checkOver() {
+      console.log('Check over', this.letters)
+      this.partOfWord = await this.$store.dispatch('dictionary/partOfWord', {
+        letters: this.letters
+      })
+
+      this.wholeWord = await this.$store.dispatch('dictionary/wholeWord', {
+        letters: this.letters
+      })
+
+      if (this.wholeWord) {
+        this.total += this.letters.length
+        this.roundover()
+      } else if (!this.partOfWord) {
+        this.total -= this.letters.length
+        this.total = this.total < 0 ? 0 : this.total
+        this.roundover()
+      } else {
+        this.round = this.letters.length
+      }
+    },
+    countDown() {
+      if (this.timer) {
+        clearTimeout(this.timer)
+      }
+
+      if (this.playIn <= 1) {
+        this.play()
+      } else {
+        this.playIn--
+        this.timer = setTimeout(this.countDown, 1000)
+      }
     },
     async roundover() {
       this.over = true
@@ -143,23 +201,33 @@ export default {
         letters: this.last
       })
 
-      this.possible += this.couldhave.length
+      this.possible += this.couldhave
+        ? this.couldhave.length
+        : this.letters.length
 
-      this.timer = setTimeout(() => {
-        this.play()
-      }, 10000)
+      this.playIn = 10
+      this.countDown()
     },
     play() {
       if (this.timer) {
         clearTimeout(this.timer)
         this.timer = null
       }
+
       this.start()
+    },
+    force() {
+      // We do this to override whatever might happen on mobile keyboards
+      this.inputletters = this.letters.toUpperCase()
+      setTimeout(this.force, 100)
     },
     async start() {
       this.letters = await this.$store.dispatch('dictionary/pick')
+      this.inputletters = this.letters
       this.round = 0
       this.over = false
+
+      this.force()
     },
     maybePlay() {
       if (this.over) {

@@ -58144,16 +58144,16 @@ export const actions = {
   },
 
   couldhave({ state }, params) {
-    // Find the longest.
+    // Find a longer word, but not intimidatingly longer.
     const letters = params.letters.toLowerCase()
     let ret = null
 
     state.words.forEach(w => {
       if (
-        !ret ||
-        (w.indexOf(letters) !== -1 &&
-          w.length > ret.length &&
-          w.length > letters.length)
+        w.indexOf(letters) !== -1 &&
+        (ret === null || w.length > ret.length) &&
+        w.length > letters.length &&
+        w.length <= letters.length + 3
       ) {
         ret = w
       }
@@ -58161,6 +58161,6 @@ export const actions = {
 
     console.log('Could have', ret, params.letters)
 
-    return ret.length > letters.length ? ret : null
+    return ret && ret.length > letters.length + 1 ? ret : null
   }
 }
