@@ -25,7 +25,7 @@
         <b>{{ letters }}</b> is not part of a word.  Lose {{ letters.length }} points.
       </div>
       <div v-if="couldhave" class="text-success">
-        From '{{ last }}' could have reached <b>{{ couldhave }}</b> (maybe - there's a bug here)
+        From '<b>{{ last }}</b>' you could have reached <b>{{ couldhave }}</b>
       </div>
       <div v-else-if="wholeWord" class="text-danger">
         You got the best word!
@@ -35,7 +35,7 @@
       </b-btn>
     </div>
     <h3 v-if="total">
-      Score: {{ total }} / {{ possible }}
+      Score: {{ total }} / {{ possible }} = {{ percent }}%
     </h3>
     <main-footer />
   </div>
@@ -75,6 +75,12 @@ export default {
       couldhave: null,
       playIn: null,
       bump: 0
+    }
+  },
+
+  computed: {
+    percent() {
+      return Math.round((100 * this.total) / this.possible)
     }
   },
 
