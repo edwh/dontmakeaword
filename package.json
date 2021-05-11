@@ -46,7 +46,7 @@
     "intersection-observer": "^0.7.0",
     "js-cookie": "^2.2.0",
     "jwt-decode": "^2.2.0",
-    "lodash": "^4.17.15",
+    "lodash": "^4.17.21",
     "lodash.assign": "^4.2.0",
     "lodash.clonedeep": "^4.5.0",
     "lodash.get": "^4.4.2",
